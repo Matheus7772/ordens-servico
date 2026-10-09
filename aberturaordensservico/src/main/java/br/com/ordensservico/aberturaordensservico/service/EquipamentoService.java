@@ -1,5 +1,6 @@
 package br.com.ordensservico.aberturaordensservico.service;
 
+import br.com.ordensservico.aberturaordensservico.dto.EquipamentoRequest;
 import br.com.ordensservico.aberturaordensservico.model.Equipamento;
 import br.com.ordensservico.aberturaordensservico.model.Setor;
 import br.com.ordensservico.aberturaordensservico.repository.EquipamentoRepository;
@@ -22,24 +23,20 @@ public class EquipamentoService {
         this.setorRepository = setorRepository;
     }
 
-    public Equipamento cadastrar(Equipamento equipamento) {
+    public Optional <Equipamento> cadastrar(String nome, String numeroPatrimonio, Integer setorId) {
+            Optional<Setor> setor = setorRepository.findById(setorId);
 
-        if (equipamento.getNome() == null
-               ) {
-            throw new RuntimeException("O setor deve ser informado.");
-        }
+            if (setor.isEmpty()) {
+                return Optional.empty();
+            }
 
-        Optional<Setor> setor = setorRepository.findById(
-                equipamento.getSetor().getId()
-        );
-
-        if (setor.isEmpty()) {
-            throw new RuntimeException("Setor não encontrado.");
-        }
-
-        equipamento.setSetor(setor.get());
-
-        return equipamentoRepository.save(equipamento);
+            Equipamento equipamento = new Equipamento();
+            equipamento.setNome(nome);
+            equipamento.setNumeroPatrimonio(numeroPatrimonio);
+            equipamento.setSetor(setor.get());
+            
+            return Optional.of(equipamentoRepository.save(equipamento));
+       
     }
 
     public List<Equipamento> listar() {
@@ -58,30 +55,19 @@ public class EquipamentoService {
         return equipamento.get();
     }
 
-    public Equipamento atualizar(Integer id, Equipamento equipamento) {
+   public Equipamento atualizar(Integer id, EquipamentoRequest request) {
+    Equipamento equipamento = equipamentoRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Equipamento não encontrado"));
 
-        Equipamento equipamentoExistente = buscarPorId(id);
+    Setor setor = setorRepository.findById(request.getSetorId())
+            .orElseThrow(() -> new RuntimeException("Setor não encontrado"));
 
-        equipamentoExistente.setNome(equipamento.getNome());
-        equipamentoExistente.setNumeroPatrimonio(equipamento.getNumeroPatrimonio());
+    equipamento.setNome(request.getNome());
+    equipamento.setNumeroPatrimonio(request.getNumeroPatrimonio());
+    equipamento.setSetor(setor);
 
-        if (equipamento.getNome() == null ||
-                equipamento.getId() == null) {
-            throw new RuntimeException("O setor deve ser informado.");
-        }
-
-        Optional<Setor> setor = setorRepository.findById(
-                equipamento.getSetor().getId()
-        );
-
-        if (setor.isEmpty()) {
-            throw new RuntimeException("Setor não encontrado.");
-        }
-
-        equipamentoExistente.setSetor(setor.get());
-
-        return equipamentoRepository.save(equipamentoExistente);
-    }
+    return equipamentoRepository.save(equipamento);
+}
 
     public void excluir(Integer id) {
 
@@ -89,4 +75,6 @@ public class EquipamentoService {
 
         equipamentoRepository.delete(equipamento);
     }
+
+
 }
