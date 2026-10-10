@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ordens de Serviço</title>
+<meta name="theme-color" content="#04050a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --flash: 0;
+    --bg: #04050a;
+    --surface: rgba(11,14,24,.74);
+    --surface-2: rgba(150,180,255,.06);
+    --ink: #e8eefc;
+    --ink-2: #8f9cba;
+    --line: rgba(140,170,230,.17);
+    --accent: #ffd84a;
+    --accent-ink: #1a1400;
+    --accent-soft: rgba(110,170,255,.14);
+    --tag: #a5cbff;
+    --danger: #ff7b7b;
+    --danger-soft: rgba(255,90,90,.12);
+    --ok: #5eead4;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", ui-sans-serif, system-ui, sans-serif;
+    --glow: 0 0 calc(70px * var(--flash)) rgba(130,170,255,calc(.38 * var(--flash)));
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; color: var(--ink); font: 15px/1.5 var(--sans); min-height: 100vh;
+    background: linear-gradient(to bottom, #51659a 0%, #27355e 20%, #0d1325 46%, #03040a 100%) fixed;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+
+  /* ---------- camada da tempestade ---------- */
+  #storm { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+  .mist {
+    position: fixed; inset: auto 0 0 0; height: 30vh; z-index: 0; pointer-events: none;
+    background: linear-gradient(to top, rgba(70,95,150,.18), transparent);
+  }
+
+  /* ---------- barra superior ---------- */
+  .top {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(5,7,13,.62); backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--glow);
+  }
+  .top-in { max-width: 1080px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 11px; font-family: var(--display); font-weight: 700; font-size: 21px; letter-spacing: .06em; text-transform: uppercase; }
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: var(--accent-ink);
+    display: grid; place-items: center;
+    box-shadow: 0 0 calc(10px + 26px * var(--flash)) rgba(255,216,74,calc(.35 + .65 * var(--flash)));
+  }
+  .brand-mark svg { width: 21px; height: 21px; }
+  nav { display: flex; gap: 4px; flex: 1; }
+  nav button {
+    border: 0; background: transparent; padding: 9px 14px; border-radius: 9px; cursor: pointer;
+    color: var(--ink-2); font-weight: 600; position: relative;
+  }
+  nav button:hover { color: var(--ink); background: var(--surface-2); }
+  nav button[aria-selected="true"] { color: var(--ink); background: rgba(150,180,255,.09); }
+  nav button[aria-selected="true"]::after {
+    content: ""; position: absolute; left: 12px; right: 12px; bottom: 2px; height: 2px; border-radius: 2px;
+    background: var(--accent); box-shadow: 0 0 10px var(--accent);
+  }
+  nav .count { font-family: var(--mono); font-size: 12px; margin-left: 6px; color: var(--ink-2); }
+  .status { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-2); }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .dot.err { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+  #fx { padding: 4px 9px; font-size: 15px; line-height: 1.2; }
+  #fx[aria-pressed="false"] { opacity: .55; }
+
+  /* ---------- layout ---------- */
+  main { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 32px 16px 90px; }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  h1 {
+    margin: 0; font-family: var(--display); font-weight: 700; font-size: 40px; line-height: 1.05;
+    letter-spacing: .03em; text-transform: uppercase;
+    text-shadow: 0 0 calc(4px + 26px * var(--flash)) rgba(150,190,255,calc(.25 + .75 * var(--flash)));
+  }
+  .sub { color: var(--ink-2); margin: 6px 0 0; }
+  .tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  .btn {
+    border: 1px solid var(--line); background: rgba(150,180,255,.07); padding: 9px 15px;
+    border-radius: 10px; cursor: pointer; font-weight: 600; white-space: nowrap; transition: background .15s, transform .1s, box-shadow .15s;
+  }
+  .btn:hover { background: rgba(150,180,255,.15); }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; box-shadow: 0 0 18px rgba(255,216,74,.28); }
+  .btn.primary:hover { filter: brightness(1.1); box-shadow: 0 0 28px rgba(255,216,74,.5); }
+  .btn.danger { color: var(--danger); }
+  .btn.sm { padding: 5px 10px; font-size: 13px; }
+  .btn:disabled { opacity: .55; cursor: default; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .search {
+    padding: 9px 13px; border: 1px solid var(--line); border-radius: 10px;
+    background: rgba(5,7,14,.6); min-width: 220px;
+  }
+  .search::placeholder { color: var(--ink-2); }
+
+  /* ---------- tabela ---------- */
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 14px 44px rgba(0,0,0,.55), var(--glow);
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .09em; font-weight: 600;
+    color: var(--ink-2); padding: 13px 16px; background: rgba(150,180,255,.05); border-bottom: 1px solid var(--line);
+  }
+  td { padding: 15px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  tbody tr.click { cursor: pointer; }
+  tbody tr.click:hover td { background: rgba(150,180,255,.08); }
+  .num { font-family: var(--mono); font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+  td.num:first-child { color: var(--accent); }
+  .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+    background: var(--accent-soft); color: var(--tag); border: 1px solid rgba(130,170,255,.25);
+  }
+  .muted { color: var(--ink-2); }
+  .clip { max-width: 420px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .actions { display: flex; gap: 6px; justify-content: flex-end; }
+  td.act { text-align: right; width: 1%; white-space: nowrap; }
+
+  .empty { padding: 60px 20px; text-align: center; color: var(--ink-2); }
+  .empty strong { display: block; color: var(--ink); font-family: var(--display); font-size: 24px; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 4px; }
+  .empty .btn { margin-top: 18px; }
+
+  .banner {
+    background: var(--danger-soft); color: #ffb4b4; border: 1px solid rgba(255,110,110,.4);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; backdrop-filter: blur(10px);
+  }
+  .banner code { font-family: var(--mono); font-size: 13px; }
+  .banner .btn { margin-top: 10px; color: var(--ink); }
+
+  /* ---------- diálogo ---------- */
+  dialog {
+    border: 1px solid rgba(140,170,230,.3); border-radius: 18px; padding: 0; width: min(520px, calc(100vw - 32px));
+    background: #0b0f1b; color: var(--ink); box-shadow: 0 24px 80px rgba(0,0,0,.7), 0 0 50px rgba(110,150,255,.12);
+  }
+  dialog::backdrop { background: rgba(2,3,8,.66); backdrop-filter: blur(4px); }
+  .dlg-head { padding: 22px 24px 4px; }
+  .dlg-head h2 { margin: 0; font-family: var(--display); font-size: 26px; letter-spacing: .05em; text-transform: uppercase; }
+  .dlg-body { padding: 14px 24px 4px; display: grid; gap: 14px; }
+  .dlg-foot { padding: 18px 24px 24px; display: flex; gap: 10px; justify-content: flex-end; }
+  label { display: grid; gap: 6px; font-weight: 600; font-size: 13.5px; }
+  label input, label select, label textarea {
+    padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(150,180,255,.06);
+    font-weight: 400; font-size: 15px; width: 100%;
+  }
+  label input:focus, label select:focus, label textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,216,74,.18); }
+  label textarea { min-height: 110px; resize: vertical; }
+  label .err { color: var(--danger); font-weight: 500; font-size: 13px; }
+  .form-err { color: #ffb4b4; background: var(--danger-soft); padding: 10px 12px; border-radius: 10px; font-size: 14px; }
+  dl.detail { margin: 0; display: grid; grid-template-columns: 120px 1fr; gap: 10px 14px; }
+  dl.detail dt { color: var(--ink-2); font-size: 13px; padding-top: 2px; }
+  dl.detail dd { margin: 0; white-space: pre-wrap; word-break: break-word; }
+
+  /* ---------- avisos ---------- */
+  #toasts { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: grid; gap: 8px; z-index: 50; width: min(440px, calc(100vw - 32px)); }
+  .toast {
+    background: #e8eefc; color: #0b0f1a; padding: 12px 16px; border-radius: 12px; font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 24px rgba(150,190,255,.3); animation: up .18s ease-out;
+  }
+  .toast.err { background: #ff5d5d; color: #fff; }
+  @keyframes up { from { opacity: 0; transform: translateY(8px); } }
+  @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+  .skeleton { height: 14px; border-radius: 6px; background: var(--line); width: 60%; }
+
+  /* ---------- celular ---------- */
+  @media (max-width: 720px) {
+    .status > span:not(.dot) { display: none; }
+    nav { order: 3; flex-basis: 100%; overflow-x: auto; }
+    h1 { font-size: 32px; }
+    .search { flex: 1; min-width: 0; }
+    table, thead, tbody, tr, td { display: block; }
+    thead { display: none; }
+    tr { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+    tr:last-child { border-bottom: 0; }
+    td { border: 0; padding: 3px 0; }
+    td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); margin-top: 6px; }
+    td.act { text-align: left; width: auto; padding-top: 10px; }
+    .actions { justify-content: flex-start; }
+    .clip { max-width: none; }
+    dl.detail { grid-template-columns: 1fr; gap: 2px; }
+    dl.detail dd { margin-bottom: 10px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="storm" aria-hidden="true"></canvas>
+<div class="mist" aria-hidden="true"></div>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 17a4.5 4.5 0 0 0 .4-8.98A6 6 0 0 0 6.3 9.6 3.8 3.8 0 0 0 7 17"/><path d="M12.5 10.5 10 14.5h4l-2.5 4.5" fill="currentColor"/></svg>
+      </span>
+      Ordens de Serviço
+    </div>
+    <nav id="tabs" role="tablist" aria-label="Seções">
+      <button role="tab" data-tab="ordens">Ordens<span class="count" id="c-ordens"></span></button>
+      <button role="tab" data-tab="equipamentos">Equipamentos<span class="count" id="c-equipamentos"></span></button>
+      <button role="tab" data-tab="setores">Setores<span class="count" id="c-setores"></span></button>
+    </nav>
+    <div class="status">
+      <button class="btn sm" id="fx" aria-pressed="true" aria-label="Efeitos de tempestade">⚡</button>
+      <span class="dot" id="dot" title="Estado da conexão com o backend"></span><span id="status-txt">Conectando…</span>
+    </div>
+  </div>
+</header>
+
+<main id="view" aria-live="polite"></main>
+
+<dialog id="dlg"><form method="dialog" id="dlg-form" novalidate></form></dialog>
+<div id="toasts" role="status"></div>
+
+<script>
+/* =====================================================================
+   Tempestade: nuvens negras, chuva e relâmpagos (canvas).
+   - Clique no fundo da página para chamar um raio.
+   - Botão ⚡ na barra liga/desliga. Respeita "reduzir movimento".
+   ===================================================================== */
+(() => {
+  const cv = document.getElementById('storm'), ctx = cv.getContext('2d');
+  const fxBtn = document.getElementById('fx');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let on = !reduce;
+  try { const s = localStorage.getItem('fx'); if (s) on = s === 'on'; } catch {}
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  let W = 0, H = 0, dpr = 1, layers = [], drops = [], splashes = [], bolts = [], sheets = [];
+  let flashVal = 0, lastCss = -1, nextStrike = 0, raf = 0, last = 0;
+
+  /* ---- nuvens: duas versões do mesmo desenho (escura e iluminada) ---- */
+  function cloudLayer(w, h, o) {
+    const puffs = Array.from({ length: o.count }, () => ({ x: rnd(0, w), y: rnd(o.y0, o.y1) * h, r: rnd(o.r0, o.r1) }));
+    const paint = rgb => {
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const g = c.getContext('2d');
+      for (const p of puffs) for (const ox of [-w, 0, w]) {          // repete nas bordas para o loop ficar contínuo
+        const gr = g.createRadialGradient(p.x + ox, p.y, 0, p.x + ox, p.y, p.r);
+        gr.addColorStop(0, `rgba(${rgb},${o.a})`);
+        gr.addColorStop(.62, `rgba(${rgb},${o.a * .88})`);
+        gr.addColorStop(1, `rgba(${rgb},0)`);
+        g.fillStyle = gr; g.beginPath(); g.arc(p.x + ox, p.y, p.r, 0, 7); g.fill();
+      }
+      return c;
+    };
+    return { dark: paint(o.dark), lit: paint(o.lit), speed: o.speed, x: rnd(0, w), glow: o.glow };
+  }
+
+  function build() {
+    dpr = Math.min(devicePixelRatio || 1, 1.5);
+    W = innerWidth; H = innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr;
+    const big = Math.max(W, 900) / 1000;
+    layers = [
+      cloudLayer(W, H, { count: 15, r0: 110 * big, r1: 230 * big, y0: .02, y1: .36, a: .85, dark: '78,90,128', lit: '120,150,215', speed: 5,  glow: .55 }),
+      cloudLayer(W, H, { count: 10, r0: 130 * big, r1: 270 * big, y0: -.02, y1: .3, a: .94, dark: '26,30,46', lit: '85,105,160',  speed: 11, glow: .45 }),
+      cloudLayer(W, H, { count: 7, r0: 150 * big, r1: 330 * big, y0: -.04, y1: .2, a: .99, dark: '1,1,3',    lit: '45,58,100',   speed: 20, glow: .3  }),
+    ];
+    const n = Math.max(140, Math.min(420, Math.round(W * H / 4600)));
+    drops = Array.from({ length: n }, () => newDrop(true));
+  }
+
+  function newDrop(anywhere) {
+    const near = Math.random() < .4;
+    return { x: rnd(-100, W + 100), y: anywhere ? rnd(0, H) : rnd(-80, -5), near,
+             len: near ? rnd(16, 30) : rnd(8, 15), v: near ? rnd(900, 1250) : rnd(520, 760) };
+  }
+
+  /* ---- raios ---- */
+  function jag(ax, ay, bx, by, d) {                                  // deslocamento do ponto médio
+    let pts = [[ax, ay], [bx, by]];
+    for (; d > 3; d /= 2) {
+      const n = [];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
+        n.push(pts[i], [(x1 + x2) / 2 + rnd(-d, d), (y1 + y2) / 2 + rnd(-d, d) * .35]);
+      }
+      n.push(pts[pts.length - 1]); pts = n;
+    }
+    return pts;
+  }
+  function strike(x) {
+    x = x ?? rnd(W * .05, W * .95);
+    const y0 = rnd(-10, H * .12), x1 = x + rnd(-W * .12, W * .12), y1 = rnd(H * .55, H * 1.02);
+    const main = jag(x, y0, x1, y1, H * .09);
+    const paths = [{ pts: main, w: 2.4 }];
+    const branches = Math.round(rnd(3, 6));
+    for (let i = 0; i < branches; i++) {
+      const [bx, by] = main[Math.floor(rnd(.12, .85) * main.length)];
+      const dir = Math.random() < .5 ? -1 : 1, len = rnd(H * .12, H * .32);
+      const ex = bx + dir * rnd(len * .3, len * .9), ey = by + len;
+      const br = jag(bx, by, ex, ey, len * .22);
+      paths.push({ pts: br, w: 1.3 });
+      if (Math.random() < .4) {                                       // sub-ramo
+        const [sx, sy] = br[Math.floor(rnd(.3, .8) * br.length)];
+        paths.push({ pts: jag(sx, sy, sx + dir * rnd(20, 90), sy + rnd(60, 160), 22), w: .8 });
+      }
+    }
+    bolts.push({ paths, born: performance.now(), life: rnd(480, 720), x, y: y0, k: rnd(.85, 1) });
+  }
+  function sheet() { sheets.push({ born: performance.now(), life: rnd(350, 650), x: rnd(0, W), k: rnd(.4, .75) }); }
+
+  function schedule(now) {
+    nextStrike = now + rnd(700, 2600);
+    const r = Math.random();
+    if (r < .22) sheet();
+    else {
+      strike();
+      if (r > .6) setTimeout(() => on && strike(), rnd(120, 320));          // raio duplo
+      if (r > .88) setTimeout(() => on && strike(), rnd(350, 650));         // triplo
+    }
+  }
+  const pulse = t => t < .1 ? 1 : t < .18 ? .12 : t < .3 ? .95 : Math.max(0, 1 - (t - .3) / .7) * .55;   // pisca e some
+
+  /* ---- loop ---- */
+  function frame(now) {
+    raf = requestAnimationFrame(frame);
+    const dt = Math.min((now - last) / 1000, .05); last = now;
+    if (now > nextStrike) schedule(now);
+
+    let flash = 0, fx = .5, fy = 0;
+    bolts = bolts.filter(b => now - b.born < b.life);
+    sheets = sheets.filter(s => now - s.born < s.life);
+    for (const b of bolts) { const a = pulse((now - b.born) / b.life) * b.k; b.a = a; if (a > flash) { flash = a; fx = b.x / W; fy = b.y / H; } }
+    for (const s of sheets) { const a = pulse((now - s.born) / s.life) * s.k; s.a = a; if (a > flash) { flash = a; fx = s.x / W; fy = .08; } }
+    flashVal = flash;
+    const rounded = Math.round(flash * 50) / 50;
+    if (rounded !== lastCss) { lastCss = rounded; document.documentElement.style.setProperty('--flash', rounded); }
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    // clarão geral do céu
+    if (flash > .02) {
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(fx * W, fy * H, 0, fx * W, fy * H, Math.max(W, H) * .9);
+      g.addColorStop(0, `rgba(170,195,255,${flash * .38})`);
+      g.addColorStop(1, 'rgba(60,80,150,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = `rgba(90,110,190,${flash * .1})`; ctx.fillRect(0, 0, W, H);
+    }
+
+    // nuvens (de trás para frente); a versão iluminada aparece com o relâmpago
+    ctx.globalCompositeOperation = 'source-over';
+    for (const L of layers) {
+      L.x = (L.x + L.speed * dt) % W;
+      for (const ox of [L.x - W, L.x]) ctx.drawImage(L.dark, ox, 0);
+      if (flash > .02) {
+        ctx.globalAlpha = Math.min(1, flash * L.glow * 1.6);
+        for (const ox of [L.x - W, L.x]) ctx.drawImage(L.lit, ox, 0);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // chuva
+    const wind = .2;
+    const boost = flash * .45;
+    for (const near of [false, true]) {
+      ctx.strokeStyle = near ? `rgba(190,210,245,${.42 + boost})` : `rgba(150,175,225,${.2 + boost * .6})`;
+      ctx.lineWidth = near ? 1.4 : .9;
+      ctx.beginPath();
+      for (const d of drops) {
+        if (d.near !== near) continue;
+        d.y += d.v * dt; d.x += d.v * dt * wind;
+        if (d.y > H) {
+          if (near && splashes.length < 50 && Math.random() < .5) splashes.push({ x: d.x, y: H - rnd(2, 40), r: 0, a: .5 });
+          Object.assign(d, newDrop(false));
+        }
+        ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.len * wind, d.y - d.len);
+      }
+      ctx.stroke();
+    }
+    // respingos
+    ctx.lineWidth = 1;
+    splashes = splashes.filter(s => (s.a -= dt * 1.6) > 0);
+    for (const s of splashes) {
+      s.r += dt * 40;
+      ctx.strokeStyle = `rgba(190,210,245,${s.a * .7})`;
+      ctx.beginPath(); ctx.ellipse(s.x, s.y, s.r, s.r * .32, 0, 0, 7); ctx.stroke();
+    }
+
+    // raios (por cima de tudo, brilho aditivo)
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const b of bolts) {
+      const a = b.a; if (a < .02) continue;
+      for (const [wm, col, am] of [[7, '90,130,255', .13], [3.2, '170,205,255', .4], [1, '255,255,255', 1]]) {
+        ctx.strokeStyle = `rgba(${col},${Math.min(1, a * am)})`;
+        for (const p of b.paths) {
+          ctx.lineWidth = p.w * wm; ctx.beginPath();
+          p.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  function start() {
+    cancelAnimationFrame(raf);
+    document.documentElement.style.setProperty('--flash', 0); lastCss = 0;
+    if (!on) { ctx.clearRect(0, 0, cv.width, cv.height); return; }
+    last = performance.now(); nextStrike = last + 500;
+    raf = requestAnimationFrame(frame);
+  }
+  function paintFx() {
+    fxBtn.setAttribute('aria-pressed', String(on));
+    fxBtn.title = on ? 'Desligar efeitos de tempestade' : 'Ligar efeitos de tempestade';
+  }
+
+  fxBtn.addEventListener('click', () => {
+    on = !on; try { localStorage.setItem('fx', on ? 'on' : 'off'); } catch {}
+    paintFx(); start();
+  });
+  document.addEventListener('click', ev => {
+    if (on && (ev.target === document.body || ev.target.tagName === 'MAIN' || ev.target.id === 'view')) strike(ev.clientX);
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) cancelAnimationFrame(raf); else start(); });
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { build(); start(); }, 150); });
+
+  build(); paintFx();
+  // "reduzir movimento": começa desligado, mas o usuário pode ligar manualmente
+  start();
+})();
+</script>
+
+<script>
+/* =====================================================================
+   Configuração
+   Se o HTML for servido pelo Spring (http://localhost:9991) usa o mesmo
+   endereço. Se for aberto de outro lugar (ex.: duplo clique no arquivo),
+   aponta para o backend em localhost:9991.
+   ===================================================================== */
+const API_BASE = (location.protocol.startsWith('http') && location.port === '9991')
+  ? '' : 'http://localhost:9991';
+
+const state = { tab: 'ordens', q: '', setores: [], equipamentos: [], ordens: [], loaded: false, offline: false };
+
+/* ---------- utilidades ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function toast(msg, isErr = false) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (isErr ? ' err' : '');
+  el.textContent = msg;
+  $('#toasts').appendChild(el);
+  setTimeout(() => el.remove(), isErr ? 6000 : 3000);
+}
+
+function parseDate(v) {
+  if (!v) return null;
+  // Jackson pode devolver ISO ("2026-10-09T21:22:10.123") ou array [2026,10,9,21,22,10,123000000]
+  if (Array.isArray(v)) return new Date(v[0], v[1] - 1, v[2], v[3] || 0, v[4] || 0, v[5] || 0);
+  const d = new Date(v);
+  return isNaN(d) ? null : d;
+}
+const fmtDate = v => {
+  const d = parseDate(v);
+  return d ? d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+};
+const osNum = id => 'OS ' + String(id).padStart(4, '0');
+
+/* ---------- API ---------- */
+class ApiError extends Error { constructor(msg, status) { super(msg); this.status = status; } }
+
+async function api(path, { method = 'GET', body } = {}) {
+  let res;
+  try {
+    res = await fetch(API_BASE + path, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    setOffline(true);
+    throw new ApiError('Não foi possível falar com o backend.', 0);
+  }
+  setOffline(false);
+  if (res.status === 204) return null;
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  if (!res.ok) throw new ApiError(errorMessage(data, res.status), res.status);
+  return data;
+}
+
+function errorMessage(data, status) {
+  if (typeof data === 'string' && data.trim()) return data;
+  if (data && typeof data === 'object') {
+    // Mapa de validação { campo: mensagem } vindo do ValidacaoException
+    const vals = Object.values(data).filter(v => typeof v === 'string');
+    if (vals.length && !data.status) return vals.join(' · ');
+  }
+  if (status === 404) return 'Registro não encontrado.';
+  if (status === 400) return 'Dados inválidos.';
+  return 'Erro no servidor (' + status + ').';
+}
+
+function setOffline(off) {
+  state.offline = off;
+  $('#dot').className = 'dot ' + (off ? 'err' : 'ok');
+  $('#status-txt').textContent = off ? 'Backend offline' : 'Conectado';
+}
+
+async function loadAll() {
+  try {
+    const [setores, equipamentos, ordens] = await Promise.all([
+      api('/setores'), api('/equipamentos'), api('/ordens-servico'),
+    ]);
+    state.setores = setores; state.equipamentos = equipamentos; state.ordens = ordens;
+  } catch (e) { /* o banner de offline cuida da mensagem */ }
+  state.loaded = true;
+  render();
+}
+
+/* ---------- renderização ---------- */
+function render() {
+  document.querySelectorAll('#tabs button').forEach(b =>
+    b.setAttribute('aria-selected', String(b.dataset.tab === state.tab)));
+  $('#c-ordens').textContent = state.loaded ? state.ordens.length : '';
+  $('#c-equipamentos').textContent = state.loaded ? state.equipamentos.length : '';
+  $('#c-setores').textContent = state.loaded ? state.setores.length : '';
+
+  const view = $('#view');
+  let html = '';
+  if (state.offline) {
+    html += `<div class="banner" role="alert"><strong>Backend inacessível.</strong>
+      Confira se o Spring Boot está rodando em <code>${esc(API_BASE || location.origin)}</code> e se o MySQL está de pé.
+      <br><button class="btn sm" data-act="reload">Tentar novamente</button></div>`;
+  }
+  if (!state.loaded) {
+    html += `<div class="card"><div class="empty"><div class="skeleton" style="margin:0 auto"></div></div></div>`;
+  } else if (state.tab === 'ordens') html += viewOrdens();
+  else if (state.tab === 'equipamentos') html += viewEquipamentos();
+  else html += viewSetores();
+  view.innerHTML = html;
+}
+
+const matches = (q, ...vals) => !q || vals.some(v => String(v ?? '').toLowerCase().includes(q.toLowerCase()));
+
+function head(title, sub, btnLabel, act, withSearch = true) {
+  return `<div class="head">
+    <div><h1>${title}</h1><p class="sub">${sub}</p></div>
+    <div class="tools">
+      ${withSearch ? `<input class="search" type="search" placeholder="Buscar…" value="${esc(state.q)}" data-search aria-label="Buscar">` : ''}
+      <button class="btn primary" data-act="${act}">${btnLabel}</button>
+    </div></div>`;
+}
+
+function emptyState(title, text, btn, act) {
+  return `<div class="empty"><strong>${title}</strong>${text}${btn ? `<br><button class="btn primary" data-act="${act}">${btn}</button>` : ''}</div>`;
+}
+
+function viewOrdens() {
+  const rows = [...state.ordens]
+    .sort((a, b) => b.id - a.id)
+    .filter(o => matches(state.q, osNum(o.id), o.descricao, o.equipamento?.nome, o.equipamento?.numeroPatrimonio, o.equipamento?.setor?.nome));
+  let body;
+  if (!state.ordens.length) {
+    body = state.equipamentos.length
+      ? emptyState('Nenhuma ordem aberta', 'Abra a primeira ordem de serviço para um equipamento.', 'Abrir ordem', 'new-ordem')
+      : emptyState('Cadastre um equipamento primeiro', 'Toda ordem de serviço precisa estar ligada a um equipamento.', 'Ir para equipamentos', 'go-equip');
+  } else if (!rows.length) body = emptyState('Nada encontrado', 'Tente outro termo de busca.');
+  else body = `<table><thead><tr><th>Ordem</th><th>Descrição</th><th>Equipamento</th><th>Setor</th><th>Aberta em</th></tr></thead><tbody>` +
+    rows.map(o => `<tr class="click" tabindex="0" data-act="view-ordem" data-id="${o.id}">
+      <td class="num" data-label="Ordem">${osNum(o.id)}</td>
+      <td data-label="Descrição"><span class="clip">${esc(o.descricao)}</span></td>
+      <td data-label="Equipamento">${o.equipamento ? esc(o.equipamento.nome || 'Sem nome') + `<div class="num">${esc(o.equipamento.numeroPatrimonio || '')}</div>` : '<span class="muted">—</span>'}</td>
+      <td data-label="Setor">${o.equipamento?.setor ? `<span class="tag">${esc(o.equipamento.setor.nome)}</span>` : '<span class="muted">—</span>'}</td>
+      <td class="num" data-label="Aberta em">${fmtDate(o.dataAbertura)}</td></tr>`).join('') + `</tbody></table>`;
+  return head('Ordens de serviço', 'Chamados abertos, do mais recente ao mais antigo.', '+ Nova ordem', 'new-ordem') + `<div class="card">${body}</div>`;
+}
+
+function viewEquipamentos() {
+  const rows = state.equipamentos.filter(e => matches(state.q, e.nome, e.numeroPatrimonio, e.setor?.nome));
+  let body;
+  if (!state.equipamentos.length) {
+    body = state.setores.length
+      ? emptyState('Nenhum equipamento', 'Cadastre máquinas, computadores ou qualquer item que possa precisar de manutenção.', 'Novo equipamento', 'new-equip')
+      : emptyState('Cadastre um setor primeiro', 'Todo equipamento pertence a um setor.', 'Ir para setores', 'go-setor');
+  } else if (!rows.length) body = emptyState('Nada encontrado', 'Tente outro termo de busca.');
+  else body = `<table><thead><tr><th>Nome</th><th>Patrimônio</th><th>Setor</th><th></th></tr></thead><tbody>` +
+    rows.map(e => `<tr>
+      <td data-label="Nome"><strong>${esc(e.nome || 'Sem nome')}</strong></td>
+      <td class="num" data-label="Patrimônio">${esc(e.numeroPatrimonio || '—')}</td>
+      <td data-label="Setor">${e.setor ? `<span class="tag">${esc(e.setor.nome)}</span>` : '<span class="muted">—</span>'}</td>
+      <td class="act"><div class="actions">
+        <button class="btn sm" data-act="edit-equip" data-id="${e.id}">Editar</button>
+        <button class="btn sm danger" data-act="del-equip" data-id="${e.id}">Excluir</button></div></td></tr>`).join('') + `</tbody></table>`;
+  return head('Equipamentos', 'Itens que podem receber ordens de serviço.', '+ Novo equipamento', 'new-equip') + `<div class="card">${body}</div>`;
+}
+
+function viewSetores() {
+  const rows = state.setores.filter(s => matches(state.q, s.nome));
+  const usados = id => state.equipamentos.filter(e => e.setor?.id === id).length;
+  let body;
+  if (!state.setores.length) body = emptyState('Nenhum setor', 'Crie o primeiro setor, como Produção, TI ou Manutenção.', 'Novo setor', 'new-setor');
+  else if (!rows.length) body = emptyState('Nada encontrado', 'Tente outro termo de busca.');
+  else body = `<table><thead><tr><th>Setor</th><th>Equipamentos</th><th></th></tr></thead><tbody>` +
+    rows.map(s => `<tr>
+      <td data-label="Setor"><strong>${esc(s.nome)}</strong></td>
+      <td class="num" data-label="Equipamentos">${usados(s.id)}</td>
+      <td class="act"><div class="actions">
+        <button class="btn sm" data-act="edit-setor" data-id="${s.id}">Editar</button>
+        <button class="btn sm danger" data-act="del-setor" data-id="${s.id}">Excluir</button></div></td></tr>`).join('') + `</tbody></table>`;
+  return head('Setores', 'Áreas da empresa onde ficam os equipamentos.', '+ Novo setor', 'new-setor') + `<div class="card">${body}</div>`;
+}
+
+/* ---------- diálogo genérico de formulário ---------- */
+const dlg = $('#dlg'), dlgForm = $('#dlg-form');
+
+/**
+ * fields: [{name, label, type: 'text'|'textarea'|'select', options?: [{value,label}], required?, placeholder?}]
+ */
+function openForm({ title, fields, values = {}, submitLabel = 'Salvar', onSubmit }) {
+  dlgForm.innerHTML = `
+    <div class="dlg-head"><h2>${esc(title)}</h2></div>
+    <div class="dlg-body">
+      ${fields.map(f => `<label>${esc(f.label)}${f.required ? ' *' : ''}
+        ${f.type === 'textarea'
+          ? `<textarea name="${f.name}" placeholder="${esc(f.placeholder || '')}">${esc(values[f.name] ?? '')}</textarea>`
+          : f.type === 'select'
+            ? `<select name="${f.name}"><option value="">Selecione…</option>${f.options.map(o =>
+                `<option value="${esc(o.value)}" ${String(values[f.name] ?? '') === String(o.value) ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`
+            : `<input name="${f.name}" type="text" autocomplete="off" placeholder="${esc(f.placeholder || '')}" value="${esc(values[f.name] ?? '')}">`}
+        <span class="err" data-err="${f.name}" hidden></span></label>`).join('')}
+      <div class="form-err" id="form-err" hidden></div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" id="dlg-cancel">Cancelar</button>
+      <button type="submit" class="btn primary" id="dlg-ok">${esc(submitLabel)}</button>
+    </div>`;
+  $('#dlg-cancel').onclick = () => dlg.close();
+  dlgForm.onsubmit = async ev => {
+    ev.preventDefault();
+    const data = Object.fromEntries(new FormData(dlgForm));
+    let bad = false;
+    fields.forEach(f => {
+      const el = dlgForm.querySelector(`[data-err="${f.name}"]`);
+      const empty = !String(data[f.name] ?? '').trim();
+      el.hidden = !(f.required && empty);
+      if (f.required && empty) { el.textContent = 'Campo obrigatório.'; bad = true; }
+    });
+    if (bad) return;
+    const ok = $('#dlg-ok'); ok.disabled = true;
+    try { await onSubmit(data); dlg.close(); }
+    catch (e) { const fe = $('#form-err'); fe.textContent = e.message; fe.hidden = false; }
+    finally { ok.disabled = false; }
+  };
+  dlg.showModal();
+  dlgForm.querySelector('input, textarea, select')?.focus();
+}
+
+function openDetail(o) {
+  dlgForm.innerHTML = `
+    <div class="dlg-head"><h2>${osNum(o.id)}</h2></div>
+    <div class="dlg-body"><dl class="detail">
+      <dt>Descrição</dt><dd>${esc(o.descricao)}</dd>
+      <dt>Equipamento</dt><dd>${o.equipamento ? esc(o.equipamento.nome || 'Sem nome') : '—'}</dd>
+      <dt>Patrimônio</dt><dd>${esc(o.equipamento?.numeroPatrimonio || '—')}</dd>
+      <dt>Setor</dt><dd>${esc(o.equipamento?.setor?.nome || '—')}</dd>
+      <dt>Aberta em</dt><dd>${fmtDate(o.dataAbertura)}</dd>
+    </dl></div>
+    <div class="dlg-foot"><button type="button" class="btn primary" id="dlg-cancel">Fechar</button></div>`;
+  $('#dlg-cancel').onclick = () => dlg.close();
+  dlgForm.onsubmit = null;
+  dlg.showModal();
+}
+
+/* ---------- ações ---------- */
+const setorOptions = () => state.setores.map(s => ({ value: s.id, label: s.nome }));
+const equipOptions = () => state.equipamentos.map(e => ({ value: e.id, label: `${e.nome || 'Sem nome'}${e.numeroPatrimonio ? ' · ' + e.numeroPatrimonio : ''}` }));
+const byId = (list, id) => list.find(x => String(x.id) === String(id));
+
+async function refresh(msg) { await loadAll(); if (msg) toast(msg); }
+
+const actions = {
+  reload: () => { state.loaded = false; render(); loadAll(); },
+  'go-equip': () => setTab('equipamentos'),
+  'go-setor': () => setTab('setores'),
+
+  'new-ordem': () => {
+    if (!state.equipamentos.length) return toast('Cadastre um equipamento antes de abrir uma ordem.', true);
+    openForm({
+      title: 'Nova ordem de serviço', submitLabel: 'Abrir ordem',
+      fields: [
+        { name: 'equipamentoId', label: 'Equipamento', type: 'select', options: equipOptions(), required: true },
+        { name: 'descricao', label: 'Descrição do problema', type: 'textarea', required: true, placeholder: 'O que aconteceu? Quando começou?' },
+      ],
+      onSubmit: async d => {
+        await api('/ordens-servico', { method: 'POST', body: { descricao: d.descricao.trim(), equipamentoId: Number(d.equipamentoId) } });
+        await refresh('Ordem aberta.');
+      },
+    });
+  },
+  'view-ordem': async el => {
+    try { openDetail(await api('/ordens-servico/' + el.dataset.id)); }
+    catch (e) { toast(e.message, true); }
+  },
+
+  'new-equip': () => {
+    if (!state.setores.length) return toast('Cadastre um setor antes de criar um equipamento.', true);
+    openForm({
+      title: 'Novo equipamento',
+      fields: [
+        { name: 'nome', label: 'Nome', required: true, placeholder: 'Ex.: Torno CNC 02' },
+        { name: 'numeroPatrimonio', label: 'Nº de patrimônio', placeholder: 'Ex.: PAT-00123' },
+        { name: 'setorId', label: 'Setor', type: 'select', options: setorOptions(), required: true },
+      ],
+      onSubmit: async d => {
+        await api('/equipamentos', { method: 'POST', body: { nome: d.nome.trim(), numeroPatrimonio: d.numeroPatrimonio.trim(), setorId: Number(d.setorId) } });
+        await refresh('Equipamento cadastrado.');
+      },
+    });
+  },
+  'edit-equip': el => {
+    const e = byId(state.equipamentos, el.dataset.id);
+    openForm({
+      title: 'Editar equipamento', values: { nome: e.nome, numeroPatrimonio: e.numeroPatrimonio, setorId: e.setor?.id },
+      fields: [
+        { name: 'nome', label: 'Nome', required: true },
+        { name: 'numeroPatrimonio', label: 'Nº de patrimônio' },
+        { name: 'setorId', label: 'Setor', type: 'select', options: setorOptions(), required: true },
+      ],
+      onSubmit: async d => {
+        await api('/equipamentos/' + e.id, { method: 'PUT', body: { nome: d.nome.trim(), numeroPatrimonio: d.numeroPatrimonio.trim(), setorId: Number(d.setorId) } });
+        await refresh('Equipamento atualizado.');
+      },
+    });
+  },
+  'del-equip': async el => {
+    const e = byId(state.equipamentos, el.dataset.id);
+    if (!confirm(`Excluir o equipamento "${e.nome}"?`)) return;
+    try { await api('/equipamentos/' + e.id, { method: 'DELETE' }); await refresh('Equipamento excluído.'); }
+    catch (err) {
+      toast(err.status === 500 || err.status === 409
+        ? 'Não foi possível excluir: o equipamento tem ordens de serviço ligadas a ele.' : err.message, true);
+    }
+  },
+
+  'new-setor': () => openForm({
+    title: 'Novo setor', fields: [{ name: 'nome', label: 'Nome do setor', required: true, placeholder: 'Ex.: Manutenção' }],
+    onSubmit: async d => { await api('/setores', { method: 'POST', body: { nome: d.nome.trim() } }); await refresh('Setor criado.'); },
+  }),
+  'edit-setor': el => {
+    const s = byId(state.setores, el.dataset.id);
+    openForm({
+      title: 'Editar setor', values: { nome: s.nome }, fields: [{ name: 'nome', label: 'Nome do setor', required: true }],
+      onSubmit: async d => { await api('/setores/' + s.id, { method: 'PUT', body: { nome: d.nome.trim() } }); await refresh('Setor atualizado.'); },
+    });
+  },
+  'del-setor': async el => {
+    const s = byId(state.setores, el.dataset.id);
+    if (!confirm(`Excluir o setor "${s.nome}"?`)) return;
+    try { await api('/setores/' + s.id, { method: 'DELETE' }); await refresh('Setor excluído.'); }
+    catch (err) {
+      toast(err.status === 500 || err.status === 409
+        ? 'Não foi possível excluir: há equipamentos neste setor.' : err.message, true);
+    }
+  },
+};
+
+/* ---------- eventos ---------- */
+function setTab(t) { state.tab = t; state.q = ''; location.hash = t; render(); }
+
+document.addEventListener('click', ev => {
+  const tab = ev.target.closest('#tabs button');
+  if (tab) return setTab(tab.dataset.tab);
+  const el = ev.target.closest('[data-act]');
+  if (el && actions[el.dataset.act]) actions[el.dataset.act](el);
+});
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Enter' && ev.target.matches('tr[data-act]')) actions[ev.target.dataset.act](ev.target);
+});
+document.addEventListener('input', ev => {
+  if (!ev.target.matches('[data-search]')) return;
+  state.q = ev.target.value;
+  const pos = ev.target.selectionStart;
+  render();
+  const s = $('[data-search]'); s.focus(); s.setSelectionRange(pos, pos);
+});
+dlg.addEventListener('click', ev => { if (ev.target === dlg) dlg.close(); });
+
+const initial = location.hash.slice(1);
+if (['ordens', 'equipamentos', 'setores'].includes(initial)) state.tab = initial;
+render();
+loadAll();
+</script>
+</body>
+</html>
